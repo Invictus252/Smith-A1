@@ -10,28 +10,73 @@ function startHandler()
 
 function requestHandler(req, res) 
 {
+  try
+  {
     var url = require('url');
     var url_parts = url.parse(req.url, true);
-    var query = url_parts.query;
+    var query = url_parts.query ;
     
     res.writeHead(200, {'Content-Type': 'text/html'});
 
+    var result = {};
     if (query['cmd'] == 'repeat')
     {
-      console.log("Handling a 'repeat' request");
-      console.log(query);
-      var len = 0;
-      if(query['word'])
-      {
-        len += query['word'].length;
-      }
-      for (var i = 0; i < len; i++) { 
-        res.write('<pre>'+query['word']+'</pre>');
-      }
-      res.end('');
+      result = repeat(query,res);
     }
     else if(query['cmd'] == 'dotted')
     {
+      result = dotted(query,res);
+    }
+    else if(query['cmd'] == 'stats')
+    {
+      result = stats(query,res); 
+    }    
+    else if((query['cmd'] != ('stats'||'dotted'||'repeat'))&&(query['cmd']!=undefined))
+    {
+      throw Error("Invalid command: " + query['cmd']);
+    }
+    else 
+    {
+      throw Error("No command entered");
+    }
+  }
+  catch (e)
+  {
+    var error = "ERROR : " +  e.message;
+    res.write(error);
+    res.end('');
+  }    
+}
+
+function stats(query,res){
+      console.log("Handling a 'stats' request");
+      console.log(query);
+      var stats = [];
+      var avg = 0;
+      for(var j in query['grades'])
+      {
+        stats.push(query['grades'][j]);
+      }
+      stats.sort(function(a, b){return a - b});
+      //console.log("stats aft sort() -> " + stats);
+      for(var k =0;k<stats.length;k++)
+      {
+        if(!parseInt(query['grades'][k]))
+        {
+          throw Error("No int found @ entry : " + (k+1));
+        }
+        avg += parseInt(query['grades'][k]);
+      }
+      //console.log("avg b4 / -> " + avg);
+      avg = avg/stats.length;
+      //console.log("avg aft / -> "+ avg);
+      res.write('<pre> Avg: '+avg+' Min: '+stats[0]+' Max: '+stats[stats.length-1]+'</pre>');      
+      res.end(''); 
+}
+
+function dotted(query,res){
+      if (query['word1'] == undefined || query['word2'] == undefined)  
+        throw Error("Need to enter two words ");  
       console.log("Handling a 'dotted' request");
       console.log(query);
       var dString = [query['word1'],"",query['word2']];
@@ -42,32 +87,17 @@ function requestHandler(req, res)
         dString[1] += ".";
       }
       res.write('<pre>'+dString[0]+dString[1]+dString[2]+'</pre>');      
-      res.end('');      
-    }
-    else if(query['cmd'] == 'stats')
-    {
-      console.log("Handling a 'stats' request");
+      res.end('');  
+}
+
+function repeat(query,res){
+      if (query['word'] == undefined || Array.isArray(query['word']))  
+        throw Error("Need to enter one word ");
+    
+      console.log("Handling a 'repeat' request");
       console.log(query);
-      var stats = [];
-      var avg = 0;
-      for(var j in query['grades'])
-      {
-        stats.push(query['grades'][j]);
+      for (var i = 0; i < query['word'].length; i++) { 
+        res.write('<pre>'+query['word']+'</pre>');
       }
-      stats.sort(function(a, b){return a - b});
-      console.log("stats aft sort() -> " + stats);
-      for(var k =0;k<stats.length;k++)
-      {
-        avg += parseInt(query['grades'][k]);
-      }
-      console.log("avg b4 / -> " + avg);
-      avg = avg/stats.length;
-      console.log("avg aft / -> "+ avg);
-      res.write('<pre> Avg: '+avg+' Min: '+stats[0]+' Max: '+stats[stats.length-1]+'</pre>');      
-      res.end('');      
-    }    
-    else
-    {
-      res.end('');
-    }
-}    
+      res.end('');  
+}
